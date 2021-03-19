@@ -20,6 +20,7 @@ library(rmarkdown)
 library(knitr)
 library(kableExtra)
 library(dplyr)
+library(rdrop2)
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
@@ -96,13 +97,20 @@ shinyServer(function(input, output) {
         
         colnames(out) <- c("Random Day","Patients")
         
-        # Local file system
+#########       Local file system     #########
         # set your working directory
-        # setwd("D:/Work/Spot_Sepsis_OP_tables")
-
+        setwd("D:/Work/Spot_Sepsis_OP_tables")
         path_out = 'backup/'
         name = paste(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".csv",sep = "")
         write.csv(out, paste(path_out,name,sep = ''), row.names = FALSE)
+        
+#########       Dropbox     #########
+            # drop_auth()
+            # #drop_auth(new_user = T) for renew Authentication
+            # name = paste(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".csv",sep = "")
+            # filePath <- file.path(tempdir(), name)
+            # write.csv(out, filePath, row.names = FALSE, quote = TRUE)
+            # drop_upload(filePath)
 
         
         out
