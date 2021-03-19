@@ -6,8 +6,20 @@
 #
 #    http://shiny.rstudio.com/
 #
+#   Install TinyTeX
+#   install.packages('tinytex')
+#   tinytex::install_tinytex()
+#   https://yihui.org/tinytex/
+#
+# setwd("D:/Work/Spot_Sepsis_OP_tables")
+# develop shinyapp by tanaphum wichaita
 
 library(shiny)
+library(tinytex)
+library(rmarkdown)
+library(knitr)
+library(kableExtra)
+library(dplyr)
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
@@ -19,11 +31,38 @@ shinyServer(function(input, output) {
         
     })
     
-    output$downloadCSV <- downloadHandler(filename = function() {paste(input$sitename,format(Sys.time(), " %A-%B-%d-%Y-%T"), ".csv",sep = "") }
-                                          ,content = function(file) {write.csv(table_out(), file, row.names = FALSE)})
+    output$downloadCSV <- downloadHandler(
+        filename = function() {
+            paste0(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".csv") 
+            },
+        content = function(file) {
+            write.csv(table_out(), file, row.names = FALSE)
+            }
+        )
     
+    output$downloadPDF <- downloadHandler(
+        filename = function() {
+            paste0(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".pdf")
+        },
+        
+        content = function(file) {
+            src <- normalizePath('report.Rmd')
+            
+            # temporarily switch to the temp dir, in case you do not have write
+            # permission to the current working directory
+            owd <- setwd(tempdir())
+            on.exit(setwd(owd))
+            file.copy(src, 'report.Rmd')
+            
+            out <- render(input = 'report.Rmd',
+                          output_format = pdf_document() 
+            )
+            file.rename(out, file)
+        }
+    )
+        
     
-    table_out <- reactive({
+        table_out <- reactive({
         req (!is.null(input$datafile))
         
         data <- data()
@@ -58,6 +97,9 @@ shinyServer(function(input, output) {
         colnames(out) <- c("Random Day","Patients")
         
         # Local file system
+        # set your working directory
+        # setwd("D:/Work/Spot_Sepsis_OP_tables")
+
         path_out = 'backup/'
         name = paste(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".csv",sep = "")
         write.csv(out, paste(path_out,name,sep = ''), row.names = FALSE)

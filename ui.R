@@ -6,12 +6,22 @@
 #
 #    http://shiny.rstudio.com/
 #
+#   Install TinyTeX
+#   install.packages('tinytex')
+#   tinytex::install_tinytex()
+#   https://yihui.org/tinytex/
+#
+# setwd("D:/Work/Spot_Sepsis_OP_tables")
+# develop shinyapp by tanaphum wichaita
 
 library(shiny)
+library(rmarkdown)
+library(knitr)
+library(kableExtra)
+library(dplyr)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
-    
     # Application title
     titlePanel("Spot Sepsis random number generator for outpatient screening"),
     
@@ -26,6 +36,7 @@ shinyUI(fluidPage(
                       ".csv")
         ),
         downloadButton('downloadCSV', 'Download as .csv'),
+        downloadButton('downloadPDF', 'Download as .pdf'),
         h2("Output"),
         tableOutput('table')
     )

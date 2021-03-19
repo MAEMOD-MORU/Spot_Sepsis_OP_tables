@@ -1,0 +1,13 @@
+---
+title: "Spot Sepsis OP tables"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+# Table
+
+```{r echo = FALSE, comment = NA}
+table_out() %>%
+  kbl()
+```
+
