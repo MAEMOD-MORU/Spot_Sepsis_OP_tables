@@ -19,6 +19,7 @@ library(rmarkdown)
 library(knitr)
 library(kableExtra)
 library(dplyr)
+library(shinyjs)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
@@ -28,6 +29,7 @@ shinyUI(fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
+        shinyjs::useShinyjs(),
         textInput("sitename", "Sitename", "Name"),
         fileInput("datafile", "Choose CSV File",
                   accept = c(

@@ -21,9 +21,15 @@ library(knitr)
 library(kableExtra)
 library(dplyr)
 library(rdrop2)
+library(shinyjs)
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
+    
+    #disable download button
+    shinyjs::useShinyjs()
+    shinyjs::disable("downloadCSV")
+    shinyjs::disable("downloadPDF")
 
     data<-reactive({
         if (is.null(input$datafile))
@@ -32,6 +38,7 @@ shinyServer(function(input, output) {
         
     })
     
+    #download CSV file
     output$downloadCSV <- downloadHandler(
         filename = function() {
             paste0(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".csv") 
@@ -41,6 +48,7 @@ shinyServer(function(input, output) {
             }
         )
     
+    #download PDF file
     output$downloadPDF <- downloadHandler(
         filename = function() {
             paste0(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".pdf")
@@ -96,6 +104,11 @@ shinyServer(function(input, output) {
         out=cbind(rep(day[ran_day],nd),ran_matrix[ran_day,])
         
         colnames(out) <- c("Random Day","Patients")
+        
+        #enable download button
+        shinyjs::useShinyjs()
+        shinyjs::enable("downloadCSV")
+        shinyjs::enable("downloadPDF")
         
 #########       Local file system     #########
         # set your working directory
