@@ -1,13 +1,49 @@
 ---
 title: "Spot Sepsis OP tables"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
 ---
 
 # Table
+<br />
+<br />
+<br />
+```{r table, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+library(dplyr)
+library(flextable)
+library(officer)
+library(knitr)
+set_flextable_defaults(fonts_ignore=TRUE)
+big_border = fp_border(color="black", width = 2)
+small_border = fp_border(color="gray", width = 1)
+  df <-flextable(table_out2()) %>% theme_box()  %>% set_table_properties(layout = "autofit",width =1)
+  df
+```
 
-```{r echo = FALSE, comment = NA}
-table_out() %>%
-  kbl()
+\newpage
+
+```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+library(dplyr)   
+library(flextable)
+library(officer)
+library(knitr)
+library(tibble)
+
+data <- opd_daily_patient_selection()
+data_range <- length(data[1,])
+count <- 0
+name_col <- names(data)
+while (count < data_range) {
+  count <- count+1
+  table <- data.frame(data[,count]) %>% add_column(Description = "")
+  colnames(table) <- c(name_col[count],"Description")
+  cf <- flextable(table) %>% theme_box()  %>%   set_table_properties(layout = "fixed",width =1) %>% width(j = 1, 1.5) %>% width(j = 2, 5.5)
+  cat(knit_print(cf))
+  cat("\n\\newpage\n")
+}
+
 ```
 

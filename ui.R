@@ -16,10 +16,9 @@
 
 library(shiny)
 library(rmarkdown)
-library(knitr)
-library(kableExtra)
 library(dplyr)
 library(shinyjs)
+library(DT)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
@@ -28,20 +27,42 @@ shinyUI(fluidPage(
     
     
     # Show a plot of the generated distribution
-    mainPanel(
+    sidebarPanel(width = 4,
         shinyjs::useShinyjs(),
         textInput("sitename", "Sitename", "Name"),
-        fileInput("datafile", "Choose CSV File",
-                  accept = c(
-                      "text/csv",
-                      "text/comma-separated-values,text/plain",
-                      ".csv")
+        selectInput("opdrecruitment", "OPD recruitment:",
+                    c("Mon - Thu" = 1,
+                      "Mon - Fri" = 2)
+        ),
+        checkboxGroupInput("nonrecruitday", "Non recruitment Day :",
+                           c("Monday" = "Monday",
+                             "Tuesday" = "Tuesday",
+                             "Wednesday" = "Wednesday",
+                             "Thursday" = "Thursday"
+                           ),
+                           
+        ),
+        fileInput(
+            'datafile',
+            h4('Upload File'),
+            accept = c(
+                'text/csv',
+                'text/comma-separated-values,text/plain',
+                '.csv',
+                '.xlsx'
+            )
         ),
         downloadButton('downloadCSV', 'Download as .csv'),
+        downloadButton('downloadDOC', 'Download as .docx'),
         downloadButton('downloadPDF', 'Download as .pdf'),
-        h2("Output"),
-        tableOutput('table')
-    )
+    ),
+        mainPanel(width = 8,
+            h2("Output"),
+            dataTableOutput('table'),
+            tableOutput('table2')
+        )
+
+   
     
 )
 
