@@ -29,10 +29,18 @@ shinyUI(fluidPage(
     # Show a plot of the generated distribution
     sidebarPanel(width = 4,
         shinyjs::useShinyjs(),
-        textInput("sitename", "Sitename", "Name"),
+        selectInput("sitename", "Sitename : ",
+                    c("Bangladesh" = "Bangladesh",
+                      "Cambodia" = "Cambodia",
+                      "Indonesia" = "Indonesia",
+                      "Laos - Salavan" = "Laos - Salavan",
+                      "Laos - Savannakhet" = "Laos - Savannakhet")
+        ),
         selectInput("opdrecruitment", "OPD recruitment:",
                     c("Mon - Thu" = 1,
-                      "Mon - Fri" = 2)
+                      "Mon - Fri" = 2,
+                      "Mon - Sat" = 3,
+                      "Sun - Thu" = 4)
         ),
         checkboxGroupInput("nonrecruitday", "Non recruitment Day :",
                            c("Monday" = "Monday",
@@ -52,14 +60,15 @@ shinyUI(fluidPage(
                 '.xlsx'
             )
         ),
-        downloadButton('downloadCSV', 'Download as .csv'),
-        downloadButton('downloadDOC', 'Download as .docx'),
         downloadButton('downloadPDF', 'Download as .pdf'),
     ),
         mainPanel(width = 8,
             h2("Output"),
             dataTableOutput('table'),
-            tableOutput('table2')
+            conditionalPanel("output.show",h2("OPD Daily Patient Selection")),
+
+            # tableOutput('table2')
+            uiOutput("Clinical_Area")
         )
 
    

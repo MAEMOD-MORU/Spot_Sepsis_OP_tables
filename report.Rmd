@@ -1,10 +1,8 @@
 ---
 title: "Spot Sepsis OP tables"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output:
+output: 
   pdf_document: default
-  html_document: default
-  word_document: default
 ---
 
 # Table
@@ -33,16 +31,20 @@ library(knitr)
 library(tibble)
 
 data <- opd_daily_patient_selection()
-data_range <- length(data[1,])
-count <- 0
-name_col <- names(data)
-while (count < data_range) {
-  count <- count+1
-  table <- data.frame(data[,count]) %>% add_column(Description = "")
-  colnames(table) <- c(name_col[count],"Description")
-  cf <- flextable(table) %>% theme_box()  %>%   set_table_properties(layout = "fixed",width =1) %>% width(j = 1, 1.5) %>% width(j = 2, 5.5)
-  cat(knit_print(cf))
-  cat("\n\\newpage\n")
+data_area <- length(data)
+data_date <- length(data[[1]][1,])
+name_col <- names(data[[1]][1,])
+
+for (A in 1:data_area) {
+  header <- paste("Clinical Area",A,sep = " ")
+  cat(header)
+  for (D in 1:data_date) {
+    table <- data.frame(data[[A]][,D]) %>% add_column(Description = "")
+    colnames(table) <- c(name_col[D],"Description")
+    cf <- flextable(table) %>% theme_box()  %>%   set_table_properties(layout = "fixed",width =1) %>% width(j = 1, 1.5) %>% width(j = 2, 5.5)
+    cat(knit_print(cf))
+    cat("\n\\newpage\n")
+  }
 }
 
 ```
