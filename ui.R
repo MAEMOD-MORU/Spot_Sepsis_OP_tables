@@ -19,9 +19,12 @@ library(rmarkdown)
 library(dplyr)
 library(shinyjs)
 library(DT)
+library(shinybusy)
+library(shinycssloaders)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
+    includeCSS("www/style.css"),
     # Application title
     titlePanel("Spot Sepsis random number generator for outpatient screening"),
     
@@ -36,20 +39,8 @@ shinyUI(fluidPage(
                       "Laos - Salavan" = "Laos - Salavan",
                       "Laos - Savannakhet" = "Laos - Savannakhet")
         ),
-        selectInput("opdrecruitment", "OPD recruitment:",
-                    c("Mon - Thu" = 1,
-                      "Mon - Fri" = 2,
-                      "Mon - Sat" = 3,
-                      "Sun - Thu" = 4)
-        ),
-        checkboxGroupInput("nonrecruitday", "Non recruitment Day :",
-                           c("Monday" = "Monday",
-                             "Tuesday" = "Tuesday",
-                             "Wednesday" = "Wednesday",
-                             "Thursday" = "Thursday"
-                           ),
-                           
-        ),
+        textOutput("poolOfDay"),
+        textOutput("clinicalArea_text"),
         fileInput(
             'datafile',
             h4('Upload File'),
@@ -64,10 +55,7 @@ shinyUI(fluidPage(
     ),
         mainPanel(width = 8,
             h2("Output"),
-            dataTableOutput('table'),
             conditionalPanel("output.show",h2("OPD Daily Patient Selection")),
-
-            # tableOutput('table2')
             uiOutput("Clinical_Area")
         )
 

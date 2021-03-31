@@ -19,25 +19,26 @@ library(tinytex)
 library(rmarkdown)
 library(rdrop2)
 library(readxl)
-library(aweek)
-library(lubridate)
 library(shinyjs)
 library(dplyr)
 library(flextable)
 library(officer)
 library(DT)
 library(stringr)
+library(shinybusy)
+library(shinycssloaders)
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output,session) {
     
     #disable download button
     shinyjs::useShinyjs()
-    shinyjs::disable("downloadCSV")
-    shinyjs::disable("downloadDOC")
     shinyjs::disable("downloadPDF")
     values <- reactiveValues(show = FALSE,
-                             clinicalAreas = 1)
+                             clinicalAreas = 1,
+                             opdRecruitment = 0,
+                             poolOfDays = "",
+                             NumberRandomDays = 0)
     
 
     data<-reactive({
@@ -90,6 +91,7 @@ shinyServer(function(input, output,session) {
         },
         
         content = function(file) {
+            show_modal_spinner()
             src <- normalizePath('report.Rmd')
             
             # temporarily switch to the temp dir, in case you do not have write
@@ -101,61 +103,45 @@ shinyServer(function(input, output,session) {
             out <- render(input = 'report.Rmd',
                           output_format = pdf_document(latex_engine = "xelatex") 
             )
+            remove_modal_spinner()
             file.rename(out, file)
         }
     )
     
     observe({
-        #####non recruit day input#####
-        if(input$opdrecruitment == 1){
-            updateCheckboxGroupInput(session, "nonrecruitday","Non recruitment Day :",
-                                     c("Monday" = "Monday",
-                                       "Tuesday" = "Tuesday",
-                                       "Wednesday" = "Wednesday",
-                                       "Thursday" = "Thursday"
-                                     ))
-            
-        }else if(input$opdrecruitment == 2){
-            updateCheckboxGroupInput(session, "nonrecruitday","Non recruitment Day :",
-                                     c("Monday" = "Monday",
-                                       "Tuesday" = "Tuesday",
-                                       "Wednesday" = "Wednesday",
-                                       "Thursday" = "Thursday",
-                                       "Friday" = "Friday"
-                                     ))
-        }else if(input$opdrecruitment == 3){
-            updateCheckboxGroupInput(session, "nonrecruitday","Non recruitment Day :",
-                                     c("Monday" = "Monday",
-                                       "Tuesday" = "Tuesday",
-                                       "Wednesday" = "Wednesday",
-                                       "Thursday" = "Thursday",
-                                       "Friday" = "Friday",
-                                       "Saturday" = "Saturday"
-                                     ))
-        }else{
-            updateCheckboxGroupInput(session, "nonrecruitday","Non recruitment Day :",
-                                     c("Sunday" = "Sunday",
-                                       "Monday" = "Monday",
-                                       "Tuesday" = "Tuesday",
-                                       "Wednesday" = "Wednesday",
-                                       "Thursday" = "Thursday"
-                                     ))
-        }
-        
+        show_modal_spinner()
+        Sys.sleep(0.5)
         ######site name Input######
         if(input$sitename == "Bangladesh"){
             values$clinicalAreas <- 2
+            values$opdRecruitment <- 3
+            values$poolOfDays <- "Sun - Thu"
+            values$NumberRandomDays <- 5
         }else if(input$sitename == "Cambodia"){
             values$clinicalAreas <- 3
+            values$opdRecruitment <- 1
+            values$poolOfDays <- "Mon - Fri"
+            values$NumberRandomDays <- 3
         }else if(input$sitename == "Indonesia"){
             values$clinicalAreas <- 1
+            values$opdRecruitment <- 2
+            values$poolOfDays <- "Mon - Sat"
+            values$NumberRandomDays <- 5
         }else if(input$sitename == "Laos - Salavan"){
             values$clinicalAreas <- 1
+            values$opdRecruitment <- 1
+            values$poolOfDays <- "Mon - Fri"
+            values$NumberRandomDays <- 1
         }else if(input$sitename == "Laos - Savannakhet"){
             values$clinicalAreas <- 1
+            values$opdRecruitment <- 1
+            values$poolOfDays <- "Mon - Fri"
+            values$NumberRandomDays <-1
         }
         
         values$show <- FALSE
+        
+        remove_modal_spinner()
     })
         
     
@@ -195,8 +181,6 @@ shinyServer(function(input, output,session) {
 
         #enable download button
         shinyjs::useShinyjs()
-        shinyjs::enable("downloadCSV")
-        shinyjs::enable("downloadDOC")
         shinyjs::enable("downloadPDF")
         
 #########       Local file system     #########
@@ -220,26 +204,25 @@ shinyServer(function(input, output,session) {
     })
     
         opd_daily_patient_selection <- reactive({
+            
             req (!is.null(input$datafile))
             #Define opd patient groups
+            shinyjs::useShinyjs()
+            shinyjs::enable("downloadPDF")
             values$show <- T
             opd_doc<-1:29
             tri_doc<-1:57
             tri_nurse<-1:1
             size_pat <- 10
-            nonRecruitDay <- length(input$nonrecruitday)
-            if(input$opdrecruitment == 1)  {
-                day <- 4 - nonRecruitDay
-                date <- c("Monday","Tuesday","Wednesday","Thursday")
-                }
-            else if(input$opdrecruitment == 2){
-                day <- 5 - nonRecruitDay
+            withProgress(message = 'Calculation in progress',{
+            if(values$opdRecruitment == 1){
+                day <- 5
                 date <- c("Monday","Tuesday","Wednesday","Thursday","Friday")
-            }else if(input$opdrecruitment == 3){
-                day <- 6 - nonRecruitDay
+            }else if(values$opdRecruitment == 2){
+                day <- 6
                 date <- c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
             }else{
-                day <- 5 - nonRecruitDay
+                day <- 5
                 date <- c("Sunday","Monday","Tuesday","Wednesday","Thursday")
             }
             
@@ -262,124 +245,55 @@ shinyServer(function(input, output,session) {
             
             list_patient_numbers_group <- list()
             
+            nonrecruitment<-1:day
+            #create function to randomly select one value from sample
+            #NB output of function (last line of code) must be a value
+
+                select_opd_day<-sort(sample(nonrecruitment,size=values$NumberRandomDays))
+            
+            
 
             #Repeat function 3 times to get random selection of 15 patients for each day of the week
             for (i in 1:values$clinicalAreas) {
-                patient_numbers_group <- replicate(day,patient_numbers(all_opd))
-                if(!is.null(input$nonrecruitday)){
-                    date <- date[!date %in% input$nonrecruitday]
-                }
-                colnames(patient_numbers_group) <- date
+                patient_numbers_group <- replicate(values$NumberRandomDays,patient_numbers(all_opd))
+
+                    # date <- date[!date %in% input$nonrecruitday]
+                
+                colnames(patient_numbers_group) <- date[select_opd_day]
                 list_patient_numbers_group[[i]] <-patient_numbers_group
             }
-            
-            list_patient_numbers_group
+            })
+                list_patient_numbers_group
+
         })
         
-        table_out2 <- reactive({
-            req (!is.null(input$datafile))
-            data <- na.omit(data())
-            set_week_start("Sunday") # set week start to Sunday (7)
-            w <- week(Sys.Date()) #get weed
-            fristWeedDay <- get_date(week= w+1) #start Monday
-            
-            shinyjs::useShinyjs()
-            shinyjs::enable("downloadPDF")
-            
-            if(input$opdrecruitment == 1)  {
-                day_num <- 4
-                day <- c("Monday","Tuesday","Wednesday","Thursday")
-                date <- c(as.Date(fristWeedDay+1),
-                          as.Date(fristWeedDay+2),
-                          as.Date(fristWeedDay+3),
-                          as.Date(fristWeedDay+4))
-                d <- "Monday - Thursday"
-            }
-            else if (input$opdrecruitment == 1){
-                day_num <- 5
-                day <- c("Monday","Tuesday","Wednesday","Thursday","Friday")
-                date <- c(as.Date(fristWeedDay+1),
-                          as.Date(fristWeedDay+2),
-                          as.Date(fristWeedDay+3),
-                          as.Date(fristWeedDay+4),
-                          as.Date(fristWeedDay+5)
-                          )
-                d <- "Monday - Friday"
-            }else if (input$opdrecruitment == 3){
-                day_num <- 6
-                day <- c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
-                date <- c(as.Date(fristWeedDay+1),
-                          as.Date(fristWeedDay+2),
-                          as.Date(fristWeedDay+3),
-                          as.Date(fristWeedDay+4),
-                          as.Date(fristWeedDay+5),
-                          as.Date(fristWeedDay+6)
-                )
-                d <- "Monday - Saturday"
-            }else{
-                day_num <- 5
-                day <- c("Sunday","Monday","Tuesday","Wednesday","Thursday")
-                date <- c(as.Date(fristWeedDay),
-                          as.Date(fristWeedDay+1),
-                          as.Date(fristWeedDay+2),
-                          as.Date(fristWeedDay+3),
-                          as.Date(fristWeedDay+4)
-                )
-                d <- "Sunday - Thursday"
-            }
-            
-                clinic1 <- rpois(day_num,
-                                 lambda = mean(
-                                     tail(data$`Clinical Area 1`,5),na.rm = T
-                                 )
-                )
-                
-                clinic2 <- rpois(day_num,
-                                 lambda = mean(
-                                     tail(data$`Clinical Area 2`,5),na.rm = T
-                                 )
-                )
-                
-                clinic3 <- rpois(day_num,
-                                 lambda = mean(
-                                     tail(data$`Clinical Area 3`,5),na.rm = T
-                                 )
-                )
-                
-                table <- data.frame("OPD recruitment hours" = d,
-                                    "OPD Day" = day,
-                                    "OPD Date" = date,
-                                    "Clinical Area 1" <- clinic1,
-                                    "Clinical Area 2" <- clinic2,
-                                    "Clinical Area 3" <- clinic3
-                )
-            
-            colnames(table) <- c("OPD recruitment hours","OPD Day","OPD Date","Clinical Area 1","Clinical Area 2","Clinical Area 3")
-            for (day in input$nonrecruitday) {
-                
-                table[table$`OPD Day` == day,]$`Clinical Area 1` <- 0
-                table[table$`OPD Day` == day,]$`Clinical Area 2` <- 0
-                table[table$`OPD Day` == day,]$`Clinical Area 3` <- 0
-            }
-            table
-        })
+        output$poolOfDay <- renderText(
+            paste0("Pool Of Days : ", values$poolOfDays ) 
+        ) 
+        
+        output$clinicalArea_text <- renderText(
+            paste0("Number of Clinical Area : ", values$clinicalAreas ) 
+        ) 
+        
+ 
         
         output$Clinical_Area <- renderUI({
             req (!is.null(input$datafile))
-
-            plot_and_radio_output_list <- lapply(1:values$clinicalAreas, function(i) {
+            withProgress(message = 'Calculation in progress',{
+            Clinical_Area_list <- NULL
+            shinyjs::disable("downloadPDF")
+            Clinical_Area_list <- lapply(1:values$clinicalAreas, function(i) {
                 tableName <- paste("Clinical Area", i, sep="")
                 outputName <- paste("t", i, sep="")
+                shinyjs::enable("downloadPDF")
                 output[[outputName]] <- renderTable(opd_daily_patient_selection()[[i]],bordered = T)
                 tagList(
                     h2(tableName),
                     tableOutput(outputName)
                 )
             })
-            do.call(tagList, unlist(plot_and_radio_output_list, recursive = FALSE))
+            })
         })
     
-    output$table <- renderDataTable(table_out2())
-    # output$table2 <- renderTable(opd_daily_patient_selection(),bordered = T)
 
 })
