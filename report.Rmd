@@ -1,29 +1,19 @@
 ---
 title: "Spot Sepsis OP tables"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: 
-  pdf_document: default
+output: pdf_document
 ---
+
+```{r Header, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+sitename <- paste0("\\begin{center}  \\Large Site : ",input$sitename," \\end{center}")
+cat(sitename)
+```
 
 # Table
 <br />
 <br />
 <br />
 ```{r table, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
-library(dplyr)
-library(flextable)
-library(officer)
-library(knitr)
-set_flextable_defaults(fonts_ignore=TRUE)
-big_border = fp_border(color="black", width = 2)
-small_border = fp_border(color="gray", width = 1)
-  df <-flextable(table_out2()) %>% theme_box()  %>% set_table_properties(layout = "autofit",width =1)
-  df
-```
-
-\newpage
-
-```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
 library(dplyr)   
 library(flextable)
 library(officer)
@@ -35,8 +25,10 @@ data_area <- length(data)
 data_date <- length(data[[1]][1,])
 name_col <- names(data[[1]][1,])
 
+
+
 for (A in 1:data_area) {
-  header <- paste("Clinical Area",A,sep = " ")
+  header <- paste("\\Large Clinical Area",A,sep = " ")
   cat(header)
   for (D in 1:data_date) {
     table <- data.frame(data[[A]][,D]) %>% add_column(Description = "")
@@ -49,3 +41,5 @@ for (A in 1:data_area) {
 
 ```
 
+
+  
