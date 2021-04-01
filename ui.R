@@ -56,7 +56,7 @@ shinyUI(fluidPage(
         mainPanel(width = 8,
             h2("Output"),
             conditionalPanel("output.show",h2("OPD Daily Patient Selection")),
-            uiOutput("Clinical_Area")
+            tableOutput("Clinical_Area")
         )
 
    

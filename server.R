@@ -27,6 +27,7 @@ library(DT)
 library(stringr)
 library(shinybusy)
 library(shinycssloaders)
+library(aweek)
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output,session) {
@@ -38,7 +39,8 @@ shinyServer(function(input, output,session) {
                              clinicalAreas = 1,
                              opdRecruitment = 0,
                              poolOfDays = "",
-                             NumberRandomDays = 0)
+                             NumberRandomDays = 0,
+                             previousWeek= NULL)
     
 
     data<-reactive({
@@ -51,38 +53,6 @@ shinyServer(function(input, output,session) {
         }
         
     })
-    
-    #download CSV file
-    output$downloadCSV <- downloadHandler(
-        filename = function() {
-            paste0(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".csv") 
-            },
-        content = function(file) {
-            write.csv(table_out(), file, row.names = FALSE)
-            }
-        )
-    
-    #download DOCX file
-    output$downloadDOC <- downloadHandler(
-        filename = function() {
-            paste0(input$sitename,format(Sys.time(), " %d-%b-%Y %H.%M.%S"), ".docx")
-        },
-        
-        content = function(file) {
-            src <- normalizePath('report.Rmd')
-            
-            # temporarily switch to the temp dir, in case you do not have write
-            # permission to the current working directory
-            owd <- setwd(tempdir())
-            on.exit(setwd(owd))
-            file.copy(src, 'report.Rmd')
-            
-            out <- render(input = 'report.Rmd',
-                          output_format = word_document() 
-            )
-            file.rename(out, file)
-        }
-    )
     
     #download PDF file
     output$downloadPDF <- downloadHandler(
@@ -207,12 +177,8 @@ shinyServer(function(input, output,session) {
             
             req (!is.null(input$datafile))
             #Define opd patient groups
-            shinyjs::useShinyjs()
-            shinyjs::enable("downloadPDF")
+            data <- na.omit(data())
             values$show <- T
-            opd_doc<-1:29
-            tri_doc<-1:57
-            tri_nurse<-1:1
             size_pat <- 10
             withProgress(message = 'Calculation in progress',{
             if(values$opdRecruitment == 1){
@@ -225,45 +191,91 @@ shinyServer(function(input, output,session) {
                 day <- 5
                 date <- c("Sunday","Monday","Tuesday","Wednesday","Thursday")
             }
-            
-            if(input$sitename == "Cambodia") size_pat <- 15
+                
+            w <- (tail(data$`OPD Date`,1)) %>% strftime(format = "%V")
+            w <- strtoi(w)-1
+            w <- paste0("0",toString(w))
+            values$previousWeek<- data %>% filter(as.aweek(data$`OPD Date`) %>% strftime(format = "%V")  == w)
+                
+                clinic1 <- round(mean(values$previousWeek$`Clinical Area 1`))
+                clinic2 <- round(mean(values$previousWeek$`Clinical Area 2`))
+                clinic3 <- round(mean(values$previousWeek$`Clinical Area 3`))
+                
             
             #Apply vector-specific prefix to each item
+            opd_doc<-1:clinic1
+            tri_doc<-1:clinic2
+            tri_nurse<-1:clinic3
             opd_doc<-sapply(opd_doc,function(x)paste("OPD_DOC",x,sep="_"))
             tri_doc<-sapply(tri_doc,function(x)paste("TRI_DOC",x,sep="_"))
             tri_nurse<-sapply(tri_nurse,function(x)paste("TRI_NUR",x,sep="_"))
-            
+            all_opd<- opd_doc
             #Concatenate three opd groups into single vector
-            all_opd<-c(opd_doc, tri_doc, tri_nurse)
+            if(clinic1 == 0){
+                opd_doc <- NULL
+            }
+            if(clinic2 == 0){
+                tri_doc <- NULL
+            }
+            if(clinic3 == 0){
+                tri_nurse <- NULL
+            }
+            
+            
+            if(input$sitename == "Cambodia") {
+                size_pat <- 15
+                all_opd<- c(opd_doc,tri_doc,tri_nurse)
+            }else if(input$sitename == "Indonesia") {
+                all_opd <- opd_doc
+            }else if(input$sitename == "Laos - Salavan") {
+                all_opd <- opd_doc
+            }else{
+                all_opd <- opd_doc
+            }
+            
+           
             
             #Create function that samples 15 patients from concatenated vector without replacement
             patient_numbers<-function(all_opd){
+                if(input$sitename == "Bangladesh"){
+                    randomNum <- 1:(length(opd_doc)+length(tri_doc))
+                    x <- round(runif(1))
+                    if(x){
+                        opd_doc <- sapply(randomNum,function(x)paste("OPD_DOC",x,sep="_"))
+                        all_opd <- opd_doc
+                    }else{
+                        tri_doc<-sapply(randomNum,function(x)paste("TRI_DOC",x,sep="_"))
+                        all_opd <- tri_doc
+                    }
+                }
                 select_opd_patients<-sample(all_opd,size=size_pat,replace=F)
                 select_opd_patients[str_order(select_opd_patients,numeric = T)]
                 #x[str_order(x,  numeric = T)]
             }
             
-            list_patient_numbers_group <- list()
+            # list_patient_numbers_group <- list()
             
             nonrecruitment<-1:day
             #create function to randomly select one value from sample
             #NB output of function (last line of code) must be a value
 
-                select_opd_day<-sort(sample(nonrecruitment,size=values$NumberRandomDays))
+            select_opd_day<-sort(sample(nonrecruitment,size=values$NumberRandomDays))
             
             
 
             #Repeat function 3 times to get random selection of 15 patients for each day of the week
-            for (i in 1:values$clinicalAreas) {
+
                 patient_numbers_group <- replicate(values$NumberRandomDays,patient_numbers(all_opd))
 
                     # date <- date[!date %in% input$nonrecruitday]
                 
                 colnames(patient_numbers_group) <- date[select_opd_day]
-                list_patient_numbers_group[[i]] <-patient_numbers_group
-            }
+                # list_patient_numbers_group[[i]] <-patient_numbers_group
+            
             })
-                list_patient_numbers_group
+            shinyjs::useShinyjs()
+            shinyjs::enable("downloadPDF")
+            patient_numbers_group
 
         })
         
@@ -275,25 +287,27 @@ shinyServer(function(input, output,session) {
             paste0("Number of Clinical Area : ", values$clinicalAreas ) 
         ) 
         
- 
+        # output$Clinical_Area <- renderUI({
+        #     req (!is.null(input$datafile))
+        #     withProgress(message = 'Calculation in progress',{
+        #     Clinical_Area_list <- NULL
+        #     shinyjs::disable("downloadPDF")
+        #     
+        #     Clinical_Area_list <- lapply(1:values$clinicalAreas, function(i) {
+        #         outputName <- paste("t", i, sep="")
+        #         tableName <- paste("Clinical Area ", i, sep="")
+        #         output[[outputName]] <- renderTable(opd_daily_patient_selection()[[i]],bordered = T)
+        #         shinyjs::enable("downloadPDF")
+        #         tagList(
+        #             h2(tableName),
+        #             tableOutput(outputName)
+        #         )
+        #     })
+        #     })
+        # })
         
-        output$Clinical_Area <- renderUI({
-            req (!is.null(input$datafile))
-            withProgress(message = 'Calculation in progress',{
-            Clinical_Area_list <- NULL
-            shinyjs::disable("downloadPDF")
-            Clinical_Area_list <- lapply(1:values$clinicalAreas, function(i) {
-                tableName <- paste("Clinical Area", i, sep="")
-                outputName <- paste("t", i, sep="")
-                shinyjs::enable("downloadPDF")
-                output[[outputName]] <- renderTable(opd_daily_patient_selection()[[i]],bordered = T)
-                tagList(
-                    h2(tableName),
-                    tableOutput(outputName)
-                )
-            })
-            })
-        })
+        output$Clinical_Area <- renderTable(opd_daily_patient_selection(),bordered = T)
+        
     
 
 })
