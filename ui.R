@@ -37,7 +37,8 @@ shinyUI(fluidPage(
                       "Cambodia" = "Cambodia",
                       "Indonesia" = "Indonesia",
                       "Laos - Salavan" = "Laos - Salavan",
-                      "Laos - Savannakhet" = "Laos - Savannakhet")
+                      "Laos - Savannakhet" = "Laos - Savannakhet",
+                      "Vietnam" = "Vietnam")
         ),
         textOutput("poolOfDay"),
         textOutput("clinicalArea_text"),
@@ -48,15 +49,20 @@ shinyUI(fluidPage(
                 'text/csv',
                 'text/comma-separated-values,text/plain',
                 '.csv',
+                '.xls',
                 '.xlsx'
             )
         ),
         downloadButton('downloadPDF', 'Download as .pdf'),
     ),
         mainPanel(width = 8,
+            
             h2("Output"),
-            conditionalPanel("output.show",h2("OPD Daily Patient Selection")),
-            tableOutput("Clinical_Area")
+            conditionalPanel(condition="output.show",h2("OPD Daily Patient Selection")),
+            tableOutput("Clinical_Area"),
+            conditionalPanel(condition="output.show",h3("Previous Week Table")),
+            dataTableOutput("previousWeek")
+            
         )
 
    
