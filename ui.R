@@ -40,6 +40,7 @@ shinyUI(fluidPage(
                       "Laos - Savannakhet" = "Laos - Savannakhet",
                       "Vietnam" = "Vietnam")
         ),
+        uiOutput("moreChoice"),
         textOutput("poolOfDay"),
         textOutput("clinicalArea_text"),
         fileInput(

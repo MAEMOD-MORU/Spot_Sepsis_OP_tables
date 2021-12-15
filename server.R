@@ -46,13 +46,23 @@ shinyServer(function(input, output,session) {
     shinyjs::useShinyjs()
     shinyjs::disable("downloadPDF")
     
+    output$moreChoice <- renderUI({
+      tagList(
+        selectInput("more_choice", "Option : ",
+                    c("General week" = "General",
+                      "Sari week" = "Sari")
+                  ),
+      )
+    })
+    
     #values have changing 
     values <- reactiveValues(show = FALSE,
                              clinicalAreas = 1,
                              opdRecruitment = 0,
                              poolOfDays = "",
                              NumberRandomDays = 0,
-                             previousWeek= NULL)
+                             previousWeek= NULL 
+                             )
     
     #input file 
     data<-reactive({
@@ -112,6 +122,7 @@ shinyServer(function(input, output,session) {
     )
     
     observe({
+      output$moreChoice <- NULL
         #use loading screen
         show_modal_spinner()
         #wait of 1 sec
@@ -119,11 +130,18 @@ shinyServer(function(input, output,session) {
         ######site name Input######
         #change values of clinicalAreas , opdRecruitment , poolOfDays and NumberRandomDays
         if(input$sitename == "Bangladesh"){
-            
-            values$clinicalAreas <- 2
+          output$moreChoice <- renderUI({
+            tagList(
+              selectInput("more_choice", "Option : ",
+                          c("General week" = "General",
+                            "Sari week" = "Sari")
+              ),
+            )
+          })
+            values$clinicalAreas <- 1
             values$opdRecruitment <- 3
-            values$poolOfDays <- "Sun - Thu"
-            values$NumberRandomDays <- 5
+            values$poolOfDays <- "Sun"
+            values$NumberRandomDays <- 1
         }else if(input$sitename == "Cambodia"){
             values$clinicalAreas <- 3
             values$opdRecruitment <- 1
@@ -150,7 +168,6 @@ shinyServer(function(input, output,session) {
             values$poolOfDays <- "Mon - Fri"
             values$NumberRandomDays <-5
         }
-        
         #stop loading screen
         remove_modal_spinner()
     })
@@ -177,8 +194,8 @@ shinyServer(function(input, output,session) {
               day <- 4
               date <- c("Monday","Tuesday","Wednesday","Thursday")
             }else{
-                day <- 5
-                date <- c("Sunday","Monday","Tuesday","Wednesday","Thursday")
+                day <- 1
+                date <- "Sunday"
             }
   
             w <- (tail(data$`OPD Date`,1))%>% floor_date(unit='week') %>% epiweek()
@@ -233,6 +250,7 @@ shinyServer(function(input, output,session) {
             opd_doc<-sapply(opd_doc,function(x)paste("CLINAREA_A",x,sep="_"))
             tri_doc<-sapply(tri_doc,function(x)paste("CLINAREA_B",x,sep="_"))
             tri_nurse<-sapply(tri_nurse,function(x)paste("CLINAREA_C",x,sep="_"))
+            
             all_opd<- opd_doc
             #Concatenate three opd groups into single vector
             if(clinic1 == 0){
@@ -282,13 +300,14 @@ shinyServer(function(input, output,session) {
 
             #Repeat function 3 times to get random selection of 15 patients for each day of the week
             if(input$sitename == "Bangladesh"){
+
                 randomNum1 <-0
                 randomNum2 <-0
                 if(clinic1 <= 10 || clinic2 <= 10)  {
                     if(clinic1 <= 10) randomNum1 <- 1:10
                     else randomNum1 <- 1:length(opd_doc)
                     if ( clinic2 <= 10) randomNum2 <- 1:10
-                    else randomNum1 <- 1:length(opd_doc)
+                    else randomNum2 <- 1:length(tri_doc)
 
                     }
                 else {
@@ -296,35 +315,24 @@ shinyServer(function(input, output,session) {
                     randomNum2 <- 1:length(tri_doc)
                 }
                 
-                ca1 <- sum(values$previousWeek$`Clinical Area 1`)/2
-                ca2 <- sum(values$previousWeek$`Clinical Area 2`)/2
-                caAll <- ca1 + ca2
-                opd_doc_loop_num <- round((ca1/caAll)*5)
+                # ca1 <- sum(values$previousWeek$`Clinical Area 1`)/2
+                # ca2 <- sum(values$previousWeek$`Clinical Area 2`)/2
+                # caAll <- ca1 + ca2
+                
+                opd_doc<-sapply(randomNum1,function(x)paste("General_OPD",x,sep="_"))
+                tri_doc<-sapply(randomNum2,function(x)paste("Sari_OPD",x,sep="_"))
+                
+                if(input$more_choice == "General"){
+                  patient_numbers_group <- replicate(values$NumberRandomDays,patient_numbers(opd_doc))
+                }else{
+                  patient_numbers_group <- replicate(values$NumberRandomDays,patient_numbers(tri_doc))
+                }
 
-                if(ca1 == ca2) opd_doc_loop_num <- opd_doc_loop_num+round(runif(1))
-                tri_doc_loop_num <- values$NumberRandomDays - opd_doc_loop_num
-                
-                
-                
-
-                opd_doc <- sapply(randomNum1,function(x)paste("CLINAREA_A",x,sep="_"))
-                all_opd <- opd_doc
-                patient_numbers1 <- replicate(opd_doc_loop_num,patient_numbers(all_opd))
-                
-
-                tri_doc <- sapply(randomNum2,function(x)paste("CLINAREA_B",x,sep="_"))
-                all_opd <- tri_doc
-                patient_numbers2 <- replicate(tri_doc_loop_num,patient_numbers(all_opd))
-                
-                patient_numbers_group <- cbind(patient_numbers1,patient_numbers2)
-                #x[,sample(ncol(x), 6)]
-                patient_numbers_group <- patient_numbers_group[,sample(ncol(patient_numbers_group))]
                 
             }else{
                 patient_numbers_group <- replicate(values$NumberRandomDays,patient_numbers(all_opd))
             }
                     # date <- date[!date %in% input$nonrecruitday]
-                
                 colnames(patient_numbers_group) <- date[select_opd_day]
                 # list_patient_numbers_group[[i]] <-patient_numbers_group
             
@@ -355,9 +363,19 @@ shinyServer(function(input, output,session) {
             req(!is.null(values$previousWeek))
             x <- values$previousWeek
             x$`OPD Date` <- format(x$`OPD Date`, " %d-%b-%Y")
-            ca <- values$clinicalAreas
-            col <- 3+ ca
-            x[,1:col]
+            if(input$sitename == "Bangladesh"){
+              if(input$more_choice == "General"){
+                x[,1:4]
+              }else{
+                col <- 3+ 1
+                x[,c(1:3,5)]
+              }
+            }else{
+              ca <- values$clinicalAreas
+              col <- 3+ ca
+              x[,1:col]
+            }
+
         })
 
         
